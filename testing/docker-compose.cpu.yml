@@ -1,0 +1,6 @@
+# Run Ollama without the NVIDIA runtime (laptops, machines without a GPU). Inference is slower.
+# Needs Docker Compose 2.24 or newer for !reset.
+services:
+  ollama:
+    runtime: !reset null
+    deploy: !reset {}

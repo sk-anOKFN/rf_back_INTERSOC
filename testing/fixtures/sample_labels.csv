@@ -1,0 +1,14 @@
+wazuh_alert_id,label,note
+1761130000.1001,benign,cron session
+1761130000.1002,benign,package install
+1761130000.1003,benign,single failed ssh
+1761130000.1004,benign,404 favicon
+1761130000.1005,malicious,"SQL injection with sqlmap, HTTP 200"
+1761130000.1006,malicious,user added to Administrators on DC
+1761130000.1007,malicious,www-data runs base64-decoded reverse shell via sudo
+1761130000.1008,malicious,/etc/sudoers modified
+1761130000.1009,benign,CIS check (denylisted in test.env)
+1761130000.1010,benign,admin restarts nginx with sudo
+1761130000.1011,benign,search query containing 'select ... or'
+1761130000.1012,benign,service account logon
+1761130000.1013,benign,nginx.conf changed

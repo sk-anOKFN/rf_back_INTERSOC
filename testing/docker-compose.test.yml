@@ -1,0 +1,23 @@
+# Test override: adds a mock Wazuh Indexer that replays a fixture.
+#
+#   docker compose --env-file testing/test.env -f docker-compose.yml -f testing/docker-compose.test.yml up -d --build
+#
+# Add -f testing/docker-compose.cpu.yml on machines without an NVIDIA GPU.
+services:
+  mock-indexer:
+    image: python:3.11-slim
+    container_name: mock-indexer
+    command: ["python", "-u", "/testing/mock_indexer.py"]
+    environment:
+      FIXTURE: /testing/fixtures/${TEST_FIXTURE:-sample_alerts.ndjson}
+      MOCK_INDEXER_USER: ${INDEXER_USER}
+      MOCK_INDEXER_PASSWORD: ${INDEXER_PASSWORD}
+    volumes:
+      - ./testing:/testing:ro
+    networks:
+      - log_network
+
+  log_detector:
+    depends_on:
+      mock-indexer:
+        condition: service_started
