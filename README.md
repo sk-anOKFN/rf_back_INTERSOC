@@ -41,6 +41,8 @@ Ports: containers always talk to each other on the default ports (PostgreSQL 543
 2.3 Build and start
 First boot requires some time in order to pull and deploy the model set in `OLLAMA_MODEL` (**llama3.2:latest** is ~2 GB). Detection begins once Ollama and PostgreSQL are healthy **and** the `INDEXER_*` variables are filled in. Until then the detector stays up and logs `Wazuh indexer not configured`.
 
+By default the detector only reads OpenSSH, Apache and Nginx access-log events: the `INDEXER_DECODERS` and `INDEXER_GROUPS` variables are comma-separated lists matched (exact terms) against `decoder.name` and `rule.groups` in the indexer query itself. Set both to empty to analyze every event.
+
 If the indexer uses a self-signed certificate, copy its CA certificate to `./certs/root-ca.pem` and set `INDEXER_CA_CERT=/certs/root-ca.pem`. `INDEXER_VERIFY_TLS=false` disables verification (testing only).
 
 Check that the indexer is reachable from the server before starting:

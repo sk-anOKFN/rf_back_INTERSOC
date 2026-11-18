@@ -35,9 +35,24 @@ class WazuhIndexerClient:
             start = datetime.now(timezone.utc) - timedelta(minutes=config.INDEXER_LOOKBACK_MIN)
             time_range["gte"] = start.strftime("%Y-%m-%dT%H:%M:%S.000Z")
 
+        query = {"range": {"timestamp": time_range}}
+        if config.INDEXER_DECODERS or config.INDEXER_GROUPS:
+            should = []
+            if config.INDEXER_DECODERS:
+                should.append({"terms": {"decoder.name": config.INDEXER_DECODERS}})
+            if config.INDEXER_GROUPS:
+                should.append({"terms": {"rule.groups": config.INDEXER_GROUPS}})
+            query = {
+                "bool": {
+                    "must": [{"range": {"timestamp": time_range}}],
+                    "should": should,
+                    "minimum_should_match": 1,
+                }
+            }
+
         body = {
             "size": config.INDEXER_PAGE_SIZE,
-            "query": {"range": {"timestamp": time_range}},
+            "query": query,
             # "id" is the unique Wazuh alert id (keyword), used as a tie-breaker.
             "sort": [
                 {"timestamp": {"order": "asc"}},
