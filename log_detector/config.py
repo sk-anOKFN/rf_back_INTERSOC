@@ -6,8 +6,8 @@ def _get_bool(name: str, default: bool) -> bool:
         return default
     return val.strip().lower() in ("1", "true", "yes", "on")
 
-def _get_list(name: str):
-    return [v.strip() for v in os.getenv(name, "").split(",") if v.strip()]
+def _get_list(name: str, default: str = ""):
+    return [v.strip() for v in os.getenv(name, default).split(",") if v.strip()]
 
 # ====================== Ollama Configuration ========================= #
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "detector-ollama")
@@ -41,6 +41,11 @@ INDEXER_PAGE_SIZE = int(os.getenv("INDEXER_PAGE_SIZE", "200"))
 INDEXER_LOOKBACK_MIN = int(os.getenv("INDEXER_LOOKBACK_MIN", "5"))  # first run only
 # Only read alerts older than this, so alerts still being indexed are not skipped.
 INDEXER_SETTLE_SEC = int(os.getenv("INDEXER_SETTLE_SEC", "30"))
+# Server-side source filter: keep only events whose decoder.name or one of rule.groups
+# matches these lists (exact terms, no wildcards). Leave INDEXER_DECODERS and
+# INDEXER_GROUPS empty to disable the filter and read everything.
+INDEXER_DECODERS = _get_list("INDEXER_DECODERS", "sshd,apache-accesslog,nginx-accesslog")
+INDEXER_GROUPS = _get_list("INDEXER_GROUPS", "sshd,syslog,web-accesslog")
 
 def indexer_configured() -> bool:
     values = (INDEXER_URL, INDEXER_USER, INDEXER_PASSWORD)

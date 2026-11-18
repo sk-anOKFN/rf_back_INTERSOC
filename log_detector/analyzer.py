@@ -122,7 +122,20 @@ def get_raw_message(alert: dict) -> str:
     description = rule.get('description') or 'Wazuh event'
     return f"{description}: {' '.join(parts)}"[:config.MAX_FIELD_CHARS] if parts else description
 
-def build_event(alert: dict) -> dict:
+# Per-family projection of data.audit-like fields: only the keys an LLM can use for
+# reasoning, dropping pid/ppid, syscall register arguments and hex blobs.
+AUDIT_DATA_KEYS = ('command', 'exe', 'cwd', 'success', 'key', 'subj', 'uid', 'euid',
+                   'execve', 'file')
+
+def _project_data(data: dict, family: str):
+    if not isinstance(data, dict):
+        return data
+    if family == 'audit' and 'audit' in data:
+        projected = {k: v for k, v in data['audit'].items() if k in AUDIT_DATA_KEYS}
+        return {**{k: v for k, v in data.items() if k != 'audit'}, 'audit': projected}
+    return data
+
+def build_event(alert: dict, family: str) -> dict:
     '''Compact LLM input. rule.level is left out on purpose: the partner sets it uniformly.'''
     rule = alert.get('rule') or {}
     agent = alert.get('agent') or {}
@@ -139,7 +152,7 @@ def build_event(alert: dict) -> dict:
         'rule_groups': rule.get('groups'),
         'rule_mitre': mitre.get('id'),
         'full_log': alert.get('full_log'),
-        'data': alert.get('data'),
+        'data': _project_data(alert.get('data'), family),
     }
     syscheck = alert.get('syscheck')
     if isinstance(syscheck, dict):
@@ -245,7 +258,7 @@ def classify(severity: str, confidence: float, evidence: list, has_indicator: bo
     return "Benign", False
 
 def analyze_alert(alert: dict, family: str) -> dict:
-    event = build_event(alert)
+    event = build_event(alert, family)
     prompt = config.WAZUH_PROMPT.format(
         family_guidance = config.FAMILY_GUIDANCE.get(family, ""),
         examples = config.FEW_SHOT_EXAMPLES if config.PROMPT_EXAMPLES else "",

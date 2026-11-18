@@ -70,9 +70,25 @@ class Handler(BaseHTTPRequestHandler):
         if not re.fullmatch(r"/wazuh-alerts-[^/]*/_search", self.path):
             return self._send(404, {"error": f"no such index {self.path}"})
 
-        rng = body.get("query", {}).get("range", {}).get("timestamp", {})
+        query = body.get("query", {})
+        if "bool" in query:
+            # same shape as WazuhIndexerClient: range in must, decoder/groups terms in should
+            decoders = []
+            groups = []
+            for clause in query.get("bool", {}).get("should", []):
+                if "terms" in clause:
+                    decoders += clause["terms"].get("decoder.name", [])
+                    groups += clause["terms"].get("rule.groups", [])
+            rng = next((c.get("range", {}).get("timestamp", {}) for c in query["bool"].get("must", [])
+                        if "range" in c), {})
+        else:
+            decoders = []
+            groups = []
+            rng = query.get("range", {}).get("timestamp", {})
         lt = parse_date(rng["lt"]) if "lt" in rng else None
         gte = parse_date(rng["gte"]) if "gte" in rng else None
+        decoders = {d.lower() for d in decoders}
+        groups = {g.lower() for g in groups}
         after = body.get("search_after")
 
         hits = []
@@ -81,6 +97,11 @@ class Handler(BaseHTTPRequestHandler):
                 continue
             if after and doc["sort"] <= after:
                 continue
+            if decoders or groups:
+                decoder = str((doc["_source"].get("decoder") or {}).get("name", "")).lower()
+                rule_groups = {str(g).lower() for g in (doc["_source"].get("rule") or {}).get("groups") or []}
+                if not (decoder in decoders or rule_groups & groups):
+                    continue
             hits.append({k: v for k, v in doc.items() if k != "_ts"})
         self._send(200, {"hits": {"total": {"value": len(hits)}, "hits": hits[: body.get("size", 10)]}})
 
